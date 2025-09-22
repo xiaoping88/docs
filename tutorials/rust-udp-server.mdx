@@ -1,0 +1,253 @@
+---
+title: '使用 Rust 开发简单的 UDP 服务器'
+description: '学习如何使用 Rust 语言创建一个功能完整的 UDP 服务器'
+icon: 'server'
+---
+
+## 概述
+
+本教程将指导您使用 Rust 语言开发一个简单但功能完整的 UDP 服务器。该服务器具备以下核心功能：
+
+1. **监听特定地址和端口** - 在指定的网络接口上等待客户端连接
+2. **接收客户端消息** - 处理来自客户端的数据包并显示内容
+3. **发送确认回复** - 向客户端返回确认消息
+
+## 前置要求
+
+开始之前，请确保您的开发环境满足以下要求：
+
+- 安装了 Rust 编程语言（推荐使用最新稳定版本）
+- 基本的 Rust 语法知识
+- 了解网络编程的基本概念
+
+## 实现步骤
+
+### 第一步：创建新项目
+
+首先创建一个新的 Rust 项目：
+
+```bash
+cargo new udp_server_tutorial
+cd udp_server_tutorial
+```
+
+### 第二步：编写服务器代码
+
+在 `src/main.rs` 文件中，实现完整的UDP服务器：
+
+```rust src/main.rs
+use std::net::UdpSocket;
+use std::io;
+
+fn main() -> io::Result<()> {
+    // 定义服务器监听的地址和端口
+    let server_address = "127.0.0.1:8080";
+    
+    // 创建 UDP socket 并绑定到指定地址
+    let socket = UdpSocket::bind(server_address)?;
+    println!("UDP 服务器启动成功，监听地址: {}", server_address);
+    
+    // 创建缓冲区来存储接收到的数据
+    let mut buffer = [0; 1024];
+    
+    loop {
+        // 接收客户端发送的消息
+        match socket.recv_from(&mut buffer) {
+            Ok((bytes_received, client_address)) => {
+                // 将接收到的字节转换为字符串
+                let message = String::from_utf8_lossy(&buffer[..bytes_received]);
+                
+                // 在控制台打印收到的消息
+                println!("收到来自 {} 的消息: {}", client_address, message.trim());
+                
+                // 准备确认消息
+                let confirmation = "Message received";
+                
+                // 向客户端发送确认消息
+                match socket.send_to(confirmation.as_bytes(), client_address) {
+                    Ok(bytes_sent) => {
+                        println!("已向 {} 发送确认消息，字节数: {}", client_address, bytes_sent);
+                    }
+                    Err(e) => {
+                        eprintln!("发送确认消息失败: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("接收消息时出错: {}", e);
+            }
+        }
+    }
+}
+```
+
+## 代码详解
+
+让我们详细分析服务器代码的各个部分：
+
+### 导入必要的模块
+
+```rust
+use std::net::UdpSocket;
+use std::io;
+```
+
+- `UdpSocket` - Rust 标准库中的 UDP socket 实现
+- `io` - 提供输入输出相关的类型和错误处理
+
+### 创建和绑定套接字
+
+```rust
+let server_address = "127.0.0.1:8080";
+let socket = UdpSocket::bind(server_address)?;
+```
+
+- 指定服务器监听的 IP 地址和端口号
+- 使用 `bind()` 方法将套接字绑定到指定地址
+- `?` 操作符用于错误传播
+
+### 消息接收循环
+
+```rust
+let mut buffer = [0; 1024];
+loop {
+    match socket.recv_from(&mut buffer) {
+        // 处理接收到的消息
+    }
+}
+```
+
+- 创建1024字节的缓冲区来存储接收的数据
+- 使用无限循环持续监听客户端消息
+- `recv_from()` 方法阻塞等待消息到达
+
+### 消息处理和回复
+
+```rust
+let message = String::from_utf8_lossy(&buffer[..bytes_received]);
+println!("收到来自 {} 的消息: {}", client_address, message.trim());
+
+let confirmation = "Message received";
+socket.send_to(confirmation.as_bytes(), client_address)?;
+```
+
+- 将接收到的字节数组转换为可读的字符串
+- 在控制台显示消息内容和客户端地址
+- 向客户端发送确认消息
+
+## 运行服务器
+
+使用以下命令编译并运行服务器：
+
+```bash
+cargo run
+```
+
+服务器启动后，您将看到如下输出：
+
+```
+UDP 服务器启动成功，监听地址: 127.0.0.1:8080
+```
+
+## 测试客户端
+
+为了测试服务器功能，可以创建一个简单的客户端：
+
+```rust src/client.rs
+use std::net::UdpSocket;
+use std::io;
+
+fn main() -> io::Result<()> {
+    // 创建客户端套接字
+    let socket = UdpSocket::bind("127.0.0.1:0")?; // 使用任意可用端口
+    let server_address = "127.0.0.1:8080";
+    
+    // 发送消息到服务器
+    let message = "Hello from client!";
+    socket.send_to(message.as_bytes(), server_address)?;
+    println!("消息已发送: {}", message);
+    
+    // 接收服务器的确认消息
+    let mut buffer = [0; 1024];
+    let (bytes_received, _) = socket.recv_from(&mut buffer)?;
+    let response = String::from_utf8_lossy(&buffer[..bytes_received]);
+    
+    println!("服务器回复: {}", response);
+    
+    Ok(())
+}
+```
+
+## 运行测试
+
+1. 在一个终端中运行服务器：
+   ```bash
+   cargo run
+   ```
+
+2. 在另一个终端中运行客户端：
+   ```bash
+   cargo run --bin client
+   ```
+
+## 扩展功能
+
+您可以考虑添加以下功能来增强服务器：
+
+<CardGroup cols={2}>
+  <Card title="多线程处理" icon="cpu">
+    实现多线程处理多个客户端连接
+  </Card>
+  <Card title="消息日志" icon="file-lines">
+    将接收到的消息保存到文件中
+  </Card>
+  <Card title="配置文件" icon="gear">
+    支持通过配置文件自定义服务器参数
+  </Card>
+  <Card title="错误处理" icon="triangle-exclamation">
+    添加更完善的错误处理和恢复机制
+  </Card>
+</CardGroup>
+
+## 故障排除
+
+### 常见问题及解决方案
+
+<AccordionGroup>
+  <Accordion title="端口被占用错误">
+    如果遇到 "Address already in use" 错误，请尝试：
+    - 更改服务器监听的端口号
+    - 检查是否有其他程序占用了该端口
+    - 使用 `netstat` 命令查看端口使用情况
+  </Accordion>
+  
+  <Accordion title="防火墙阻止连接">
+    确保防火墙允许指定端口的 UDP 通信：
+    - 检查系统防火墙设置
+    - 在企业网络中，联系网络管理员开放端口
+  </Accordion>
+  
+  <Accordion title="消息接收不完整">
+    如果消息被截断，考虑：
+    - 增加缓冲区大小
+    - 实现消息分片和重组机制
+    - 添加消息长度验证
+  </Accordion>
+</AccordionGroup>
+
+## 总结
+
+通过本教程，您学会了：
+
+- 使用 Rust 创建基本的 UDP 服务器
+- 实现消息接收和处理功能
+- 向客户端发送确认回复
+- 添加适当的错误处理机制
+
+这个简单的 UDP 服务器为您提供了网络编程的基础，您可以在此基础上构建更复杂的网络应用程序。
+
+## 相关资源
+
+- [Rust 官方文档 - std::net](https://doc.rust-lang.org/std/net/)
+- [UDP 协议详解](https://en.wikipedia.org/wiki/User_Datagram_Protocol)
+- [Rust 网络编程指南](https://rust-lang-nursery.github.io/rust-cookbook/net.html)

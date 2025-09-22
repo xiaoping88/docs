@@ -31,6 +31,12 @@
               "essentials/navigation",
               "essentials/reusable-snippets"
             ]
+          },
+          {
+            "group": "教程",
+            "pages": [
+              "tutorials/rust-udp-server"
+            ]
           }
         ]
       },
